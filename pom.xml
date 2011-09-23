@@ -4,6 +4,7 @@
     <groupId>de.partmaster.databinding</groupId>
     <artifactId>de.partmaster.databinding</artifactId>
     <version>1.0.0-SNAPSHOT</version>
+	<name>databinding</name>
     <packaging>pom</packaging>
     <modules>
         <module>de.partmaster.databinding.observable.ui.sample.clock.core</module>

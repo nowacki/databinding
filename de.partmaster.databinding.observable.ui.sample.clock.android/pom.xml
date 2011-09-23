@@ -50,7 +50,68 @@
 				</configuration>
 				<extensions>true</extensions>
 			</plugin>
-
+			<plugin>
+				<groupId>com.pyx4me</groupId>
+				<artifactId>proguard-maven-plugin</artifactId>
+				<version>2.0.4</version>
+				<executions>
+					<execution>
+						<phase>process-classes</phase>
+						<goals>
+							<goal>proguard</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<exclusions>
+						<exclusion>
+							<groupId>de.partmaster.databinding</groupId>
+							<artifactId>de.partmaster.databinding.observable.ui.sample.clock.core</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>de.partmaster.databinding</groupId>
+							<artifactId>de.partmaster.databinding.android</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>com.ibm.icu</groupId>
+							<artifactId>icu.base</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>org.eclipse.equinox</groupId>
+							<artifactId>equinox.common</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>org.eclipse.core.databinding</groupId>
+							<artifactId>databinding</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>org.eclipse.core.databinding</groupId>
+							<artifactId>databinding.observable</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>org.eclipse.core.databinding</groupId>
+							<artifactId>databinding.property</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>org.eclipse.ufacekit.core.ubean</groupId>
+							<artifactId>ubean</artifactId>
+						</exclusion>
+						<exclusion>
+							<groupId>org.eclipse.ufacekit.core.ubean</groupId>
+							<artifactId>ubean.databinding</artifactId>
+						</exclusion>
+					</exclusions>
+					<injar>android-classes</injar>
+					<libs>
+						<lib>C:/Program Files/Java/jdk1.6.0_27/jre/lib/rt.jar</lib>
+					</libs>
+					<obfuscate>false</obfuscate>
+					<options>
+						<option>@proguard.cfg</option>
+					</options>
+				</configuration>
+			</plugin>
+ 
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>2.3.2</version>
