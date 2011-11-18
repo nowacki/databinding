@@ -123,7 +123,7 @@
 						<configuration>
 							<file>org.eclipse.equinox.common-3.6.0.jar</file>
 							<artifactId>equinox.common</artifactId>
-							<groupId>org.eclipse.core.databinding</groupId>
+							<groupId>org.eclipse.equinox</groupId>
 							<version>3.6.0</version>
 							<packaging>jar</packaging>
 						</configuration>
