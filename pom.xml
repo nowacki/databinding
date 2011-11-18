@@ -7,8 +7,9 @@
 	<name>databinding</name>
     <packaging>pom</packaging>
     <modules>
-        <module>de.partmaster.databinding.observable.ui.sample.clock.core</module>
+        <module>de.partmaster.databinding.install</module>
         <module>de.partmaster.databinding.android</module>
+        <module>de.partmaster.databinding.observable.ui.sample.clock.core</module>
         <module>de.partmaster.databinding.observable.ui.sample.clock.android</module>
         <module>de.partmaster.databinding.observable.ui.sample.clock.android.test</module>
     </modules>

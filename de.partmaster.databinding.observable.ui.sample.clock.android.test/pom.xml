@@ -68,7 +68,29 @@
 						<path>${env.ANDROID_HOME}</path>
 						<platform>1.6</platform>
 					</sdk>
+					<emulator>
+						<avd>android-2.1</avd>
+						<wait>60000</wait>
+						<options>-noaudio -partition-size 128 -wipe-data</options>
+					</emulator>
+					<undeployBeforeDeploy>true</undeployBeforeDeploy>
 				</configuration>
+				<executions>
+					<execution>
+						<id>startemulator</id>
+						<phase>initialize</phase>
+						<goals>
+							<goal>emulator-start</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>stopemulator</id>
+						<phase>install</phase>
+						<goals>
+							<goal>emulator-stop</goal>
+						</goals>
+					</execution>
+				</executions>
 				<extensions>true</extensions>
 			</plugin>
 			<plugin>

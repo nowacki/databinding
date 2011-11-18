@@ -1,0 +1,472 @@
+<!-- start main content -->
+<div class="blog-node node">
+<div class="content">
+<p>
+	<em>
+		In den letzten Tagen habe ich mich in die Android-Programmierung
+		eingearbeitet.
+		Tom Schindl berichtete einmal in einem
+		<a href="http://tomsondev.bestsolution.at/2008/10/24/theres-no-place-where-eclipse-databinding-doesnt-work/">Blog-Beitrag</a>, 
+		dass er die Anbindung von Android an das Eclipse Data Binding mit
+		Erfolg getestet hat.
+		Das hat mich ermutigt, mir als Einstiegsprojekt die Portierung der
+		Beispiel-Applikation aus meiner Observable Data Binding Reihe
+		vorzunehmen.
+	</em>
+</p>
+<h3>Erster Schritt</h3>
+	<p>
+		Also habe ich die Eclipse Databinding Projekte aus dem Eclipse CVS
+		ausgecheckt,
+		die Equinox-Artefakte (Bundle-Activator-Klassen)
+		herausgelöscht,
+		als JAR exportiert und einem
+		Android-Hello-World-Projekt hinzugefügt.
+	</p>
+	<ul>
+		<li>com.ibm.icu_4.2.1.v20100412.jar</li>
+		<li>org.eclipse.equinox.common_3.6.0.v20100503.jar</li>
+		<li>org.eclipse.core.databinding_1.3.100.I20100601-0800.jar</li>
+		<li>org.eclipse.core.databinding.observable_1.3.0.I20100601-0800.jar
+		</li>
+		<li>org.eclipse.core.databinding.property_1.3.0.I20100601-0800.jar
+		</li>
+	</ul>
+	<p>
+		<i>Aufzählung 1: Eclipse Data Binding Bundles</i>
+	</p>
+	<p>
+	Später stellte sich heraus, das prinzipiell auch die originalen Eclipse Databinding Bundles unter Android verwendet werden können, 
+	dass dann aber beim Schrumpfen der Android-App-Größe mit Proguard Probleme wegen nicht auflösbarer Klassen gibt, 
+	so dass die oben beschriebene Anpassung auf Source-Code-Ebene das richtige Vorgehen ist. 
+	</p>
+<h3>AndroidObservables und AndroidRealm</h3>
+	<p>
+		Das lief schon mal ziemlich problemlos.
+		Nun musste nach dem Muster von SWTObservables und SwingObservables die
+		Klasse AndroidObservables erstellt werden.
+		Die für das Beispiel benötigten IObservableValue-Implementierungen für
+		die Android-Widget-Properties waren überschaubar
+		und mit Hilfe der Vorlagen aus dem UFaceKit-Projekt schnell erstellt.
+		Im wesentlichen müssen die beiden Funktionen doSetValue und doGetValue
+		implementiert werden
+		und die NotificationListener bei einer Änderung des Property-Wertes
+		aufgerufen werden.
+	</p>
+<pre class="brush: java">
+
+import org.eclipse.core.databinding.observable.Realm;
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+
+import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.TextView;
+import android.widget.ToggleButton;
+
+public class AndroidObservables {
+	
+	private static Realm realm = new AndroidRealm();
+
+	public static Realm getRealm() {
+		return realm;
+	}
+	public static IObservableValue observeEnabled(View control) {
+		return new ControlObservableValue(control, AndroidProperties.ENABLED);
+	}
+	public static IObservableValue observeSelection(CompoundButton button) {
+			return new ButtonObservableValue(button);
+	}
+	public static IObservableValue observeText(TextView control) {
+		return new TextViewObservableText(control);
+	}
+	public static IObservableValue observeToggleText(ToggleButton control) {
+		return new ToggleButtonObservableText(control);
+	}
+	public static IObservableValue observeTextOff(ToggleButton control) {
+		return new ButtonObservableTextOff(control);
+	}
+	public static IObservableValue observeText(TextView control,
+			int updateEventType) {
+		return new TextObservableValue(control, updateEventType);
+	}
+}
+</pre>
+<p>
+	<i>Listing 1: Klasse AndroidObservables</i>
+</p>
+<pre class="brush: java">
+
+import org.eclipse.core.databinding.observable.Diffs;
+import org.eclipse.core.databinding.observable.Realm;
+
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+					
+/**
+ * IAndroidObservableValue implementation to observe if compound button (ToggleButton....) is checked or not.
+ */
+public class ButtonObservableValue extends AbstractAndroidObservableValue {
+
+	private final CompoundButton button;
+	private boolean selectionValue;
+	private boolean updating = false;
+	private OnCheckedChangeListener updateListener = new OnCheckedChangeListener() {
+		@Override
+		public void onCheckedChanged(CompoundButton buttonView,
+				boolean isChecked) {
+			if (updating)
+				return;
+			boolean oldSelectionValue = selectionValue;
+			selectionValue = isChecked;
+			notifyIfChanged(oldSelectionValue, selectionValue);
+		}
+	};
+	public ButtonObservableValue(CompoundButton button) {
+		super(button);
+		this.button = button;
+		init();
+	}
+	public ButtonObservableValue(Realm realm, CompoundButton button) {
+		super(realm, button);
+		this.button = button;
+		init();
+	}
+	private void init() {
+		this.selectionValue = button.isChecked();
+		button.setOnCheckedChangeListener(updateListener);
+	}
+	public void doSetValue(final Object value) {
+		try {
+			updating = true;
+			boolean oldSelectionValue = selectionValue;
+			selectionValue = value == null ? false : ((Boolean) value).booleanValue();
+			button.setChecked(selectionValue);
+			notifyIfChanged(oldSelectionValue, selectionValue);
+		} finally {
+			updating = false;
+		}
+	}
+	public Object doGetValue() {
+		return Boolean.valueOf(button.isChecked());
+	}
+	public Object getValueType() {
+		return Boolean.TYPE;
+	}
+	public synchronized void dispose() {
+		super.dispose();
+		button.setOnCheckedChangeListener(null);
+	}
+	private void notifyIfChanged(boolean oldValue, boolean newValue) {
+		if (oldValue != newValue) {
+			fireValueChange(Diffs.createValueDiff(Boolean.valueOf(oldValue), Boolean.valueOf(newValue)));
+		}
+	}
+}
+
+</pre>
+
+<p>
+	<i>Listing 2: Klasse ButtonObservableValue</i>
+</p>
+	<p>
+		Etwas komplexer war der AndroidRealm,
+		aber nach dem Studium der Dokumentation der Klassen Looper und Handler aus
+		dem Android-SDK hatte ich die benötigten Informationen,
+		um die drei Methoden syncExec, asyncExec und timerExec zu
+		implementieren.
+	</p>
+
+<pre class="brush: java">
+
+import org.eclipse.core.databinding.observable.Realm;
+
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+
+/**
+ * Android Implementation Realm.
+ * 
+ */
+public class AndroidRealm extends Realm {
+	private static final Handler handler = new Handler(Looper.getMainLooper());
+	public static void createDefault() {
+		setDefault(new AndroidRealm());
+	}
+	public boolean isCurrent() {
+		return Thread.currentThread() == Looper.getMainLooper().getThread();
+	}
+	@Override
+	public void asyncExec(Runnable runnable) {
+		handler.post(runnable);
+	}
+	@Override
+	protected void syncExec(final Runnable runnable) {
+		SynchronizedRunnable synchronizedRunnable = new SynchronizedRunnable(
+				runnable);
+		handler.post(synchronizedRunnable);
+		synchronizedRunnable.doWait();
+
+	}
+	@Override
+	public void timerExec(int milliseconds, Runnable runnable) {
+				+ runnable + &quot;)&quot;);
+		handler.postDelayed(runnable, milliseconds);
+	}
+}
+</pre>
+<p>
+	<i>Listing 3: Klasse AndroidRealm</i>
+</p>
+<h3>UBeans statt JavaBeans</h3>
+	<p>
+		Auf der Model-Seite gab es Probleme mit dem Java-Bean, genauer mit dem
+		Bean-Databinding,
+		das auf Basis von Java-Reflection implementiert ist. Ich habe dann das
+		Modell aus die UBeans aus dem UFaceKit ersetzt,
+		die ohne Java-Reflection auskommen und die auch eine
+		Eclipse-Databinding-Anbindung mitbringen.
+		Mit den UBeans und ihrem Databinding lief dann auch die Modell-Seite
+		unter Android fehlerfrei.
+	</p>
+	<ul>
+		<li>org.eclipse.ufacekit.core.ubean</li>
+		<li>org.eclipse.ufacekit.core.ubean.databinding</li>
+	</ul>
+	<p>
+		<i>Aufzählung 2: UFaceKit UBean Bundles</i>
+	</p>
+
+<pre class="brush: java">
+
+import org.eclipse.ufacekit.core.ubean.UArrayBean;
+public class ClockUBean extends UArrayBean {
+	public static final int TIME = 1;
+	public static final int MODE = 2;
+	public ClockUBean() {
+		setMode(ClockMode.RUN);
+		setTime(0);
+	}
+	@SuppressWarnings(&quot;unchecked&quot;)
+	public &gt;t extends="" object=""&lt; T getValueType(int featureId) {
+		switch (featureId) {
+		case TIME:
+			return (T) long.class;
+		case MODE:
+			return (T) ClockMode.class;
+		default:
+			return null;
+		}
+	}
+	public void setTime(long value) {
+		set(TIME, Long.valueOf(value));
+	}
+	public long getTime() {
+		return ((Long) get(TIME)).longValue();
+	}
+	public void setMode(ClockMode value) {
+		set(MODE, value);
+	}
+	public ClockMode getMode() {
+		return (ClockMode) get(MODE);
+	}
+}		
+</pre>
+<p>
+	<i>Listing 3: Klasse ClockUBean</i>
+</p>
+	<h3>Layout und Activity</h3>
+	<p>
+		Der Rest war ein Kinderspiel: Das Layout bestehend aus eim EditText und
+		einem ToggleButton erstellt,
+		die wiederverwendbaren Klassen aus dem Observable DataBinding Beispiel
+		ins Android-Projekt kopiert
+		und die Code-Zeilen, die Model, View und Controller erstellen und
+		zusammenschalten
+		(die sich bei den SWT- und Swing-Varianten in der main-Funktion befinden),
+		in die Android-Activity-Klasse übernommen und angepasst - fertig.
+	</p>
+
+<pre class="brush: xml">
+
+&lt;RelativeLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;
+	android:orientation=&quot;horizontal&quot; 
+	android:layout_width=&quot;fill_parent&quot;
+	android:layout_height=&quot;fill_parent&quot;&gt;
+	&lt;EditText 
+		android:id=&quot;@+id/time&quot; 
+		android:gravity=&quot;right&quot;
+		android:layout_alignParentLeft=&quot;true&quot;
+		android:layout_toLeftOf=&quot;@+id/mode&quot;
+		android:layout_height=&quot;wrap_content&quot;
+		android:layout_width=&quot;fill_parent&quot;
+		/&gt;
+	&lt;ToggleButton 
+		android:id=&quot;@+id/mode&quot; 
+		android:layout_width=&quot;120px&quot;
+		android:layout_height=&quot;wrap_content&quot;
+		android:layout_alignParentRight=&quot;true&quot;
+		android:layout_alignBottom=&quot;@+id/time&quot;
+		android:layout_alignParentTop=&quot;true&quot;
+		/&gt;
+&lt;/RelativeLayout&gt;		
+
+</pre>
+<p>
+	<i>Listing 4: Definition der Android-Widgets und ihres Layouts</i>
+</p>
+
+	<p>
+		Wiederverwendbare Klassen aus dem Observable DataBinding Beispiel
+	</p>
+
+<pre class="brush: java">
+
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+import org.eclipse.core.databinding.observable.value.WritableValue;
+
+import android.app.Activity;
+import android.app.KeyguardManager;
+import android.app.KeyguardManager.KeyguardLock;
+import android.os.Bundle;
+import android.widget.EditText;
+import android.widget.ToggleButton;
+import de.partmaster.databinding.android.AndroidEventConstants;
+import de.partmaster.databinding.android.AndroidObservables;
+import de.partmaster.databinding.observable.sample.android.R;
+import de.partmaster.databinding.observable.ui.sample.ClockUBean;
+import de.partmaster.databinding.observable.ui.sample.ClockMode;
+import de.partmaster.databinding.observable.ui.sample.ClockService;
+import de.partmaster.databinding.observable.ui.sample.ObservableClockController;
+import de.partmaster.databinding.observable.ui.sample.ObservableClockView;
+
+public class ClockViewActivity extends Activity implements ObservableClockView {
+	private IObservableValue timeTextObservable;
+	private IObservableValue timeEnabledObservable;
+	private IObservableValue modeSelectionObservable;
+	private IObservableValue modeTextObservable;
+	private ClockService clockService;
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
+		ToggleButton modeWidget = (ToggleButton) findViewById(R.id.mode);
+		modeWidget.setTextOn(ClockMode.SET.name());
+		modeWidget.setTextOff(ClockMode.RUN.name());
+		EditText timeWidget = (EditText) findViewById(R.id.time);
+
+		timeTextObservable = AndroidObservables.observeText(timeWidget,
+				AndroidEventConstants.Modify);
+		timeEnabledObservable = AndroidObservables.observeEnabled(timeWidget);
+		modeTextObservable = new WritableValue(AndroidObservables.getRealm());
+		modeSelectionObservable = AndroidObservables.observeSelection(modeWidget);
+
+		ClockUBean bean = new ClockUBean();
+		new ObservableClockController().bind(this, bean);
+		clockService = new ClockService(AndroidObservables.getRealm(), bean);
+	}
+	
+	@Override
+	protected void onStart() {
+		super.onStart();
+		clockService.start();
+	}
+	@Override
+	protected void onStop() {
+		clockService.stop();
+		super.onStop();
+	}
+	@Override
+	public IObservableValue getModeSelection() {
+		return modeSelectionObservable;
+	}
+	@Override
+	public IObservableValue getTimeText() {
+		return timeTextObservable;
+	}
+	@Override
+	public IObservableValue getModeText() {
+		return modeTextObservable;
+	}
+	@Override
+	public IObservableValue getTimeEnabled() {
+		return timeEnabledObservable;
+	}
+}
+
+</pre>
+
+<p>
+	<i>Listing 5: Klasse ClockViewActivity</i>
+</p>
+
+	<h3>Gotcha!</h3>
+	<p>
+		Das war eine Freude, als das Observable Databinding Beispiel dann endlich
+		im Emulator funktionierte!
+	</p>
+	<img src="https://team.partmaster.de/files/clockview_0.png" />
+	<p>
+		<i>Abbildung 1: ScreenShot Android-Emulator mit ClockView-App</i>
+	</p>
+	<p>
+		Einziger Wermutstropfen: Die lange Wartezeit, bis App nach dem
+		Ausführen des
+		Run-Button in der Eclipse-IDE endlich im Android-Emulator
+		lief.
+		Das lag vor allem an der Gesamtgröße der benötigten
+		Eclipse-Databinding-JARs.
+		Aber hier gab es noch Möglichkeiten:
+		Zuerst
+		das Bundle org.eclipse.equinox.common ordentlich ausgedünnt
+		und dann
+		vor allem das Bundle com.ibm.icu ganz entfernt und durch die
+		Standard-Java-Klassen ersetzt. Wie ich später bemerkte,
+		gibt es zum Ersetzen durch die Standard-Java-Klassen noch die Alternative
+		anstelle von com.ibm.icu
+		das Bundle com.ibm.icu.base zu verwenden, das eine
+		Minimal-Implementierung der gleichen Packages und Klassen darstellt.
+	</p>
+	<ul>
+		<li>Größe mit Eclipse Data Binding Bundles inkl. com.ibm.icu und
+			UBeans ca 7,0
+			MB
+		</li>
+		<li>APK-Größe nach dem Entfernen von com.ibm.icu und dem Ausdünnen von
+			org.eclipse.equinox.common: ca 0,7 MB</li>
+		<li>APK-Größe nach dem Schrumpfen mit Proguard: ca 50 KB</li>
+	</ul>
+	<p>
+		<i>Größenvergleich Eclipse DataBinding JARs und Android DataBinding
+			APK</i>
+	</p>
+	<p>
+		Danach war die Wartezeit beim Emulator wieder im gelb-grünen Bereich
+		und das Installieren und Starten auf echter Android-Hardware (meinem
+		Samsung Galaxy) war wirklich schnell.
+		Als ich dann noch darauf stieß,
+		dass die Android APKs mit Hilfe von Proguard noch einmal deutlich
+		geschrumpft werden können,
+		(dazu ist in der Datei default.properties
+		das Property proguard.config zu setzen)
+		konnte ich das APK letztlich
+		auf ca. 50KB zusammenschrumpfen und damit nachweisen,
+		dass die Nutzung des Eclipse DataBinding unter Android nicht gleich zu
+		aufgeblähten App-Größen führen muss.
+		Im Großen und Ganzen brachte mit mein erstes Android-Projekt angenehme
+		Erfahrungen mit sich -
+		und den Nachweis, dass das Eclipse Databindig
+		durchaus Android-tauglich
+		ist.
+		Parallel habe ich versucht, den Build und
+		die Tests gleich mit dem
+		Maven-Android-Plugin zu automatisieren.
+		Das ist
+		am Ende auch gelungen, war jedoch mit einigem Kopfzerbrechen und
+		einigen langen nächtlichen Sitzungen verbunden,
+		aber das hebe ich mir
+		für einem anderen Blog-Beitrag auf.
+	</p>
+</div>
+</div>

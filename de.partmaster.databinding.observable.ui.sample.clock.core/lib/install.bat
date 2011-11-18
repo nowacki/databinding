@@ -13,5 +13,5 @@ set INSTALL=caLL mvn -o install:install-file -Dpackaging=jar
 %INSTALL% -Dfile=org.eclipse.jface.databinding_1.5.0.I20100907-0800.jar -DgroupId=org.eclipse -DartifactId=jface.databinding -Dversion=1.5.0
 %INSTALL% -Dfile=org.eclipse.jface_3.7.0.I20110522-1430.jar -DgroupId=org.eclipse -DartifactId=jface -Dversion=3.7.0
 %INSTALL% -Dfile=org.eclipse.core.commands_3.6.0.I20110111-0800.jar -DgroupId=org.eclipse.core -DartifactId=commands -Dversion=3.6.0
-
+%INSTALL% -Dfile=org.eclipse.ufacekit.ui.example_1.0.0.jar -DgroupId=org.eclipse.ufacekit.ui -DartifactId=ui.example -Dversion=1.0.0
 pause

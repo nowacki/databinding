@@ -1,0 +1,170 @@
+<!-- start main content -->
+<div class="blog-node node">
+<div class="content">
+<p>
+	<em>
+		In the last days I did some work to familiarize myself with programming Android,
+		Tom Schindl once reported in his
+		<a href="http://tomsondev.bestsolution.at/2008/10/24/theres-no-place-where-eclipse-databinding-doesnt-work/">blog article</a>, 
+		that he had successful tested the junction between Android and the Eclipse Data Binding.
+		That has encouraged myself, 
+		to undertake the Porting of the sample application from my Observable Data Binding blog series as introduction project.
+	</em>
+</p>
+<h3>First Step</h3>
+	<p>
+		So I checked out the Eclipse Databinding projects from the Eclipse CVS,
+		removed the Equinox-artifacts (Bundle-Activator-Classes) from the sources,
+		exported the results as JARs and added them to an 
+		Android hello world projekt.
+	</p>
+	<ul>
+		<li>com.ibm.icu_4.2.1.v20100412.jar</li>
+		<li>org.eclipse.equinox.common_3.6.0.v20100503.jar</li>
+		<li>org.eclipse.core.databinding_1.3.100.I20100601-0800.jar</li>
+		<li>org.eclipse.core.databinding.observable_1.3.0.I20100601-0800.jar
+		</li>
+		<li>org.eclipse.core.databinding.property_1.3.0.I20100601-0800.jar
+		</li>
+	</ul>
+	<p>
+		<i>Enumeration 1: Eclipse Data Binding Bundles</i>
+	</p>
+	<p>
+	Later it turned out, that one can use the original Eclipse Databinding Bundles for Android, 
+	but they cause problems when it comes to shrink the App size with Proguard because of unresolvable class references. 
+	So I think, the adaption on the source code level is the right approach. 
+	</p>
+<h3>AndroidObservables and AndroidRealm</h3>
+	<p>
+		So far it was fairly good without any problems.
+		The next task was to create the class AndroidObservables with the classes 
+		SWTObservables and SwingObservables as pattern.
+		The amount of implementations of the interface IObservableValue for the Android widget properties 
+		needed for my sample application was handy and straightforward.
+		With the help  of the antetypes from the UFaceKit project they were written quickly.
+		In essence the both functions doSetValue and doGetValue have to be implemented 
+		and the notification listeners have to be called on changes of the property value. 
+	</p>
+<pre class="brush: java">
+</pre>
+<p>
+	<i>Listing 1: Class AndroidObservables</i>
+</p>
+<pre class="brush: java">
+</pre>
+
+<p>
+	<i>Listing 2: Class ButtonObservableValue</i>
+</p>
+	<p>
+		A bit more difficult was the of the class AndroidRealm,
+		but with the studies of the documentation of the classesLooper and Handler from
+		the Android SDK I've got the information needed to implement the three methods,
+		syncExec, asyncExec and timerExec.
+	</p>
+
+<pre class="brush: java">
+</pre>
+<p>
+	<i>Listing 3: Class AndroidRealm</i>
+</p>
+<h3>UBeans instead of JavaBeans</h3>
+	<p>
+		On the model side it came to problems with the Java-Bean, more precisely with the
+		Bean DataBinding from Eclipse. Its implementation uses the Java reflection mechanism.
+		Because my focus was at the moment on view databinding and not on model databinding I  
+		simply replaced the JavaBean in my sample application with one the is based on UBeans from the UFaceKit project,
+		which works without Java-Reflection and provides a junction with the 
+		Eclipse Databinding.
+		With the UBeans and their DataBinding the model side runs error-free on Android.
+	</p>
+	<ul>
+		<li>org.eclipse.ufacekit.core.ubean</li>
+		<li>org.eclipse.ufacekit.core.ubean.databinding</li>
+	</ul>
+	<p>
+		<i>Enumeration 2: UFaceKit UBean Bundles</i>
+	</p>
+
+<pre class="brush: java">
+</pre>
+<p>
+	<i>Listing 3: Class ClockUBean</i>
+</p>
+	<h3>Layout and Activity</h3>
+	<p>
+		The rest was as easy as pie:
+		Create the layout consisting of a EditText and a ToggleButton.
+		Copy the reusable classes from the Observable DataBinding Sample into the Android project.
+		Transfer and adapt the code lines which interconnect model, view and controller
+		(which reside in the main method in the SWT and Swing variants),
+		into the Android Activity class - done.
+	</p>
+
+<pre class="brush: xml">
+</pre>
+<p>
+	<i>Listing 4: Definition of the Android widgets and their layouts</i>
+</p>
+
+	<p>
+		Reusable classes from the Observable DataBinding sample
+	</p>
+
+<pre class="brush: java">
+</pre>
+
+<p>
+	<i>Listing 5: Class ClockViewActivity</i>
+</p>
+
+	<h3>Gotcha!</h3>
+	<p>
+		It was an enjoyment, as the Observable DataBinding sample runs in the
+		Android emulator finally!
+	</p>
+	<img src="https://team.partmaster.de/files/clockview_0.png" />
+	<p>
+		<i>Figure 1: Screenshot Android-Emulator with Clock-App</i>
+	</p>
+	<p>
+		There was just one little blemish: The long waiting time, until the App after
+		ckicking the run button in the Eclipse IDE starts in the Android emulator.
+		The reason was mainly the overall size of the required Eclipse DataBinding JARs.
+		But there was possibilities:
+		First prune out all unneeded classes from the bundle org.eclipse.equinox.common and then
+		above all the bundle com.ibm.icu ganz removed and replaced by the
+		standard Java classes. As i noticed later,
+		as an alternative to the replacement by the standard Java classes 
+		one can use in place of com.ibm.icu
+		the bundle com.ibm.icu.base, which is a minimal implementation of the same
+		packages and classes.
+	</p>
+	<ul>
+		<li>Size of Eclipse DataBinding bundles incl. com.ibm.icu and UBeans ca 7,0 MB</li>
+		<li>APK size after removal of com.ibm.icu and thin-out of
+			org.eclipse.equinox.common: ca 0,7 MB</li>
+		<li>APK size after shrinking by Proguard: ca 50 KB</li>
+	</ul>
+	<p>
+		<i>Size comparison Eclipse DataBinding JARs and Android APKs with DataBinding</i>
+	</p>
+	<p>
+		After that the emulator load and start time is in the green area 
+		and the deployment and start an real Android hardware (my
+		Samsung Galaxy) was really fast.
+		As I detect that Android APKs can be shrinked by means of Proguard,
+		(for this purpose the property proguard.config in file default.properties
+		has to be set) I could shrink the APK to ca. 50 KB in the end
+		and demonstrate that the usage of Eclipse DataBinding on Android don't have to lead
+		bloated App sizes.
+		In the main my first Android project brought pleasant
+		experiences -
+		and the verification, that Eclipse DataBinding is suitable for Android.
+		In parallel I tried, to automate build and tests with the Maven-Android-Plugin.
+		That succeded in the end but was combined with some headaches and nightly sessions,
+		but that story I will preserve for another blog. 
+	</p>
+</div>
+</div>
